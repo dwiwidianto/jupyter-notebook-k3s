@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jupyter-persistent-volume
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/data-jupyter"
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jupyter-persistent-volume-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: manual
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jupyter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jupyter
+  template:
+    metadata:
+      labels:
+        app: jupyter
+    spec:
+      volumes:
+        - name: jupyter-volume
+          persistentVolumeClaim:
+            claimName: jupyter-persistent-volume-claim
+      containers:
+        - name: jupyter
+          image: jupyter/base-notebook:aarch64-python-3.10.6
+          env:
+            - name: JUPYTER_TOKEN
+              value: "widiidiw" 
+          volumeMounts:
+            - name: jupyter-volume
+              mountPath: "/home/jovyan/work"
+          ports:
+            - containerPort: 8888
+          securityContext:
+            runAsUser: 0
+            privileged: true
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyter-service
+spec:
+  type: NodePort
+  selector:
+    app: jupyter
+  ports:
+  - port: 8888
+    targetPort: 8888
+    nodePort: 31337
+
+---
